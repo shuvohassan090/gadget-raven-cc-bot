@@ -1,306 +1,123 @@
-import os, random
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import import os, random
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+import os
+import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+import random
+import time
 from dotenv import load_dotenv
 
+# 🔄 Load .env variables
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
+ADMIN_ID = os.getenv("ADMIN_ID")
 
-# ✨ Animation-style reply
-async def animated_reply(update, text):
-    await update.message.chat.send_action("typing")
-    await update.message.reply_text(text)
+bot = telebot.TeleBot(BOT_TOKEN)
 
-# ✅ /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("🆕 Update", url="https://t.me/shuvogadgetbox")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await animated_reply(update, "👋 Welcome to GADGET CC GENERATOR BOT!")
-    await update.message.reply_text(
-        "🔮 Generate CC from BIN\n📍 Get Fake Address\nℹ️ View Your Info",
-        reply_markup=reply_markup
-    )
+# 🎉 /start command
+@bot.message_handler(commands=['start'])
+def start(message):
+    name = message.from_user.first_name.upper()
+    welcome = f"""Hi {name}! Welcome to this bot
+━━━━━━━━━━━━━━━━━━━━━━
+GADGET CC GENERATOR BOT is your ultimate toolkit on Telegram, packed with CC generators, educational resources, downloaders, temp mail, crypto utilities, and more. Simplify your tasks with cardin ease!
+━━━━━━━━━━━━━━━━━━━━━━
+Don't forget to JoinNow for updates!"""
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🆕 Update", url="https://t.me/shuvogadgetbox"))
+    bot.send_message(message.chat.id, welcome, reply_markup=markup)
 
-# ✅ /gen
-async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    args = context.args
-    if not args:
-        await animated_reply(update, "❌ Please provide a BIN.")
-        return
+# 💳 /gen command
+@bot.message_handler(commands=['gen'])
+def gen_cc(message):
+    bot.send_chat_action(message.chat.id, 'typing')
+    time.sleep(1.5)
 
-    bin_input = args[0]
-    parts = bin_input.split("|")
-    bin_code = parts[0]
-    mm = parts[1] if len(parts) > 1 else None
-    yy = parts[2] if len(parts) > 2 else None
-
-    cc_list = []
-    for _ in range(10):
-        exp_mm = mm if mm else f"{random.randint(1,12):02d}"
-        exp_yy = yy if yy else f"{random.randint(25,30)}"
-        cvv = random.randint(100, 999)
-        cc = f"{bin_code}xxxxxx | {exp_mm} | {exp_yy} | {cvv}"
-        cc_list.append(cc)
-
-    cc_text = "\n".join(cc_list)
-    keyboard = [[InlineKeyboardButton("🔁 Re-generate", callback_data=f"regen:{bin_input}")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await animated_reply(update, "🔄 Generating Credit Cards...")
-    await update.message.reply_text(f"💳 BIN: {bin_code}\n━━━━━━━━━━━━━━\n{cc_text}\n━━━━━━━━━━━━━━", reply_markup=reply_markup)
-
-# ✅ /fake
-async def fake(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    country = context.args[0] if context.args else "Bangladesh"
-    postal_code = "1219" if country.lower() == "bangladesh" else "10001"
-    keyboard = [[InlineKeyboardButton("📋 Copy Postal Code", callback_data=f"copy:{postal_code}")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await animated_reply(update, "🏗 Generating Fake Address...")
-    await update.message.reply_text(
-        f"📍 Address for {country}\n━━━━━━━━━━━━━━\n• Street: ২৩ খিলগাঁও চৌরাস্তা\n• City: ঢাকা\n• Postal Code: {postal_code}\n━━━━━━━━━━━━━━",
-        reply_markup=reply_markup
-    )
-
-# ✅ /info
-async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    keyboard = [[InlineKeyboardButton("🆔 User ID", callback_data=f"uid:{user.id}")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await animated_reply(update, "🔍 Processing User Info...")
-    await update.message.reply_text(
-        f"🔍 Showing User's Profile Info 📋\n━━━━━━━━━━━━━━\n• Full Name: {user.full_name}\n• Username: @{user.username}\n• User ID: {user.id}\n• Chat ID: {user.id}\n• Premium User: {'Yes' if user.is_premium else 'No'}\n━━━━━━━━━━━━━━\n👁 Thank You for Using Our Tool ✅",
-        reply_markup=reply_markup
-    )
-
-# ✅ Callback handler
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    data = query.data
-
-    if data.startswith("regen:"):
-        bin_input = data.split(":")[1]
-        parts = bin_input.split("|")
+    try:
+        args = message.text.split()[1]
+        parts = args.split('|')
         bin_code = parts[0]
-        mm = parts[1] if len(parts) > 1 else None
-        yy = parts[2] if len(parts) > 2 else None
-
-        cc_list = []
-        for _ in range(10):
-            exp_mm = mm if mm else f"{random.randint(1,12):02d}"
-            exp_yy = yy if yy else f"{random.randint(25,30)}"
-            cvv = random.randint(100, 999)
-            cc = f"{bin_code}xxxxxx | {exp_mm} | {exp_yy} | {cvv}"
-            cc_list.append(cc)
-
-        cc_text = "\n".join(cc_list)
-        await query.edit_message_text(f"💳 BIN: {bin_code}\n━━━━━━━━━━━━━━\n{cc_text}\n━━━━━━━━━━━━━━")
-
-    elif data.startswith("copy:"):
-        postal = data.split(":")[1]
-        await query.answer(f"📋 Postal Code copied: {postal}", show_alert=True)
-
-    elif data.startswith("uid:"):
-        uid = data.split(":")[1]
-        await query.answer(f"🆔 User ID copied: {uid}", show_alert=True)
-
-# ✅ Bot setup
-app = ApplicationBuilder().token(BOT_TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("gen", gen))
-app.add_handler(CommandHandler("fake", fake))
-app.add_handler(CommandHandler("info", info))
-app.add_handler(CallbackQueryHandler(button_handler))
-
-print("🤖 GADGET CC GENERATOR BOT is running...")
-app.run_polling(), CommandHandler, CallbackQueryHandler, ContextTypes
-from dotenv import load_dotenv
-
-load_dotenv()
-BOT_TOKEN = os.getenv("7754449564:AAE7_8SphGIBbGNCuR-W9X6GEZSdUewnUZQ")
-ADMIN_ID = int(os.getenv("6074463370"))
-
-# ✨ Animation-style reply
-async def animated_reply(update, text):
-    await update.message.chat.send_action("typing")
-    await update.message.reply_text(text)
-
-# ✅ /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("🆕 Update", url="https://t.me/shuvogadgetbox")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await animated_reply(update, "👋 Welcome to GADGET CC GENERATOR BOT!")
-    await update.message.reply_text(
-        "🔮 Generate CC from BIN\n📍 Get Fake Address\nℹ️ View Your Info",
-        reply_markup=reply_markup
-    )
-
-# ✅ /gen
-async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    args = context.args
-    if not args:
-        await animated_reply(update, "❌ Please provide a BIN.")
+        month = parts[1] if len(parts) > 1 else str(random.randint(1, 12)).zfill(2)
+        year = parts[2] if len(parts) > 2 else str(random.randint(25, 30))
+    except:
+        bot.reply_to(message, "❌ Format: /gen BIN or /gen BIN|MM|YY")
         return
-
-    bin_input = args[0]
-    parts = bin_input.split("|")
-    bin_code = parts[0]
-    mm = parts[1] if len(parts) > 1 else None
-    yy = parts[2] if len(parts) > 2 else None
 
     cc_list = []
     for _ in range(10):
-        exp_mm = mm if mm else f"{random.randint(1,12):02d}"
-        exp_yy = yy if yy else f"{random.randint(25,30)}"
-        cvv = random.randint(100, 999)
-        cc = f"{bin_code}xxxxxx | {exp_mm} | {exp_yy} | {cvv}"
-        cc_list.append(cc)
+        cc = bin_code + ''.join([str(random.randint(0, 9)) for _ in range(16 - len(bin_code))])
+        cvc = str(random.randint(100, 999))
+        cc_list.append(f"{cc}|{month}|{year}|{cvc}")
 
-    cc_text = "\n".join(cc_list)
-    keyboard = [[InlineKeyboardButton("🔁 Re-generate", callback_data=f"regen:{bin_input}")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply = "⚙️ Generating Credit Cards...\n━━━━━━━━━━━━━━━━\n" + "\n".join(cc_list)
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🔁 Re-generate", callback_data=f"regen:{args}"))
+    bot.send_message(message.chat.id, reply, reply_markup=markup)
 
-    await animated_reply(update, "🔄 Generating Credit Cards...")
-    await update.message.reply_text(f"💳 BIN: {bin_code}\n━━━━━━━━━━━━━━\n{cc_text}\n━━━━━━━━━━━━━━", reply_markup=reply_markup)
+# 🔁 Re-generate button
+@bot.callback_query_handler(func=lambda call: call.data.startswith('regen:'))
+def re_generate(call):
+    bin_input = call.data.split(':')[1]
+    fake_message = type('msg', (), {'chat': call.message.chat, 'text': f"/gen {bin_input}", 'from_user': call.from_user})
+    gen_cc(fake_message)
 
-# ✅ /fake
-async def fake(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    country = context.args[0] if context.args else "Bangladesh"
-import os, random
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
-from dotenv import load_dotenv
+# 🏠 /fake command
+@bot.message_handler(commands=['fake'])
+def fake_address(message):
+    bot.send_chat_action(message.chat.id, 'typing')
+    time.sleep(1.5)
+    postal = str(random.randint(10000, 99999))
+    address = f"""🏠 Generate Fake Address...
+━━━━━━━━━━━━━━━━
+Street: 123 Raven Lane
+City: Gotham
+Country: USA
+Postal Code: {postal}"""
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("📋 Copy Postal Code", callback_data=f"copy:{postal}"))
+    bot.send_message(message.chat.id, address, reply_markup=markup)
 
-load_dotenv()
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
+@bot.callback_query_handler(func=lambda call: call.data.startswith('copy:'))
+def copy_postal(call):
+    postal = call.data.split(':')[1]
+    bot.answer_callback_query(call.id, f"Copied: {postal}")
 
-# ✨ Animation-style reply
-async def animated_reply(update, text):
-    await update.message.chat.send_action("typing")
-    await update.message.reply_text(text)
+# 👤 /info command
+@bot.message_handler(commands=['info'])
+def user_info(message):
+    bot.send_chat_action(message.chat.id, 'typing')
+    time.sleep(1.5)
+    user = message.from_user
+    info = f"""🔍 Showing User's Profile Info 📋
+━━━━━━━━━━━━━━━━
+• Full Name: {user.first_name}
+• Username: @{user.username}
+• User ID: {user.id}
+• Chat ID: {message.chat.id}
+• Premium User: Yes
+• Data Center: SIN, Singapore, SG
+• Created On: June 22, 2023
+• Account Age: 2 years, 1 months, 9 days
+━━━━━━━━━━━━━━━━
+👁 Thank You for Using Our Tool ✅"""
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🆔 User ID", callback_data=f"uid:{user.id}"))
+    bot.send_message(message.chat.id, info, reply_markup=markup)
 
-# ✅ /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("🆕 Update", url="https://t.me/shuvogadgetbox")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await animated_reply(update, "👋 Welcome to GADGET CC GENERATOR BOT!")
-    await update.message.reply_text(
-        "🔮 Generate CC from BIN\n📍 Get Fake Address\nℹ️ View Your Info",
-        reply_markup=reply_markup
+@bot.callback_query_handler(func=lambda call: call.data.startswith('uid:'))
+def copy_uid(call):
+    uid = call.data.split(':')[1]
+    bot.answer_callback_query(call.id, f"Copied: {uid}")
+
+# 📜 menu command (inline)
+@bot.message_handler(func=lambda m: m.text.lower() == "menu")
+def show_menu(message):
+    markup = InlineKeyboardMarkup()
+    markup.row(
+        InlineKeyboardButton("/gen", callback_data="menu_gen"),
+        InlineKeyboardButton("/fake", callback_data="menu_fake"),
+        InlineKeyboardButton("/info", callback_data="menu_info")
     )
+    bot.send_message(message.chat.id, "📜 Choose a command:", reply_markup=markup)
 
-# ✅ /gen
-async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    args = context.args
-    if not args:
-        await animated_reply(update, "❌ Please provide a BIN.")
-        return
-
-    bin_input = args[0]
-    parts = bin_input.split("|")
-    bin_code = parts[0]
-    mm = parts[1] if len(parts) > 1 else None
-    yy = parts[2] if len(parts) > 2 else None
-
-    cc_list = []
-    for _ in range(10):
-        exp_mm = mm if mm else f"{random.randint(1,12):02d}"
-        exp_yy = yy if yy else f"{random.randint(25,30)}"
-        cvv = random.randint(100, 999)
-        cc = f"{bin_code}xxxxxx | {exp_mm} | {exp_yy} | {cvv}"
-        cc_list.append(cc)
-
-    cc_text = "\n".join(cc_list)
-    keyboard = [[InlineKeyboardButton("🔁 Re-generate", callback_data=f"regen:{bin_input}")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await animated_reply(update, "🔄 Generating Credit Cards...")
-import os, random
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
-from dotenv import load_dotenv
-
-load_dotenv()
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
-
-# ✨ Animation-style reply
-async def animated_reply(update, text):
-    await update.message.chat.send_action("typing")
-    await update.message.reply_text(text)
-
-# ✅ /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("🆕 Update", url="https://t.me/shuvogadgetbox")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await animated_reply(update, "👋 Welcome to GADGET CC GENERATOR BOT!")
-    await update.message.reply_text(
-        "🔮 Generate CC from BIN\n📍 Get Fake Address\nℹ️ View Your Info",
-        reply_markup=reply_markup
-    )
-
-# ✅ /gen
-async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    args = context.args
-    if not args:
-        await animated_reply(update, "❌ Please provide a BIN.")
-        return
-
-    bin_input = args[0]
-    parts = bin_input.split("|")
-    bin_code = parts[0]
-    mm = parts[1] if len(parts) > 1 else None
-    yy = parts[2] if len(parts) > 2 else None
-
-    cc_list = []
-    for _ in range(10):
-        exp_mm = mm if mm else f"{random.randint(1,12):02d}"
-        exp_yy = yy if yy else f"{random.randint(25,30)}"
-        cvv = random.randint(100, 999)
-        cc = f"{bin_code}xxxxxx | {exp_mm} | {exp_yy} | {cvv}"
-        cc_list.append(cc)
-
-    cc_text = "\n".join(cc_list)
-    keyboard = [[InlineKeyboardButton("🔁 Re-generate", callback_data=f"regen:{bin_input}")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await animated_reply(update, "🔄 Generating Credit Cards...")
-    await update.message.reply_text(f"💳 BIN: {bin_code}\n━━━━━━━━━━━━━━\n{cc_text}\n━━━━━━━━━━━━━━", reply_markup=reply_markup)
-
-# ✅ /fake
-async def fake(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    country = context.args[0] if context.args else "Bangladesh"
-    postal_code = "1219" if country.lower() == "bangladesh" else "10001"
-    keyboard = [[InlineKeyboardButton("📋 Copy Postal Code", callback_data=f"copy:{postal_code}")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await animated_reply(update, "🏗 Generating Fake Address...")
-    await update.message.reply_text(
-        f"📍 Address for {country}\n━━━━━━━━━━━━━━\n• Street: ২৩ খিলগাঁও চৌরাস্তা\n• City: ঢাকা\n• Postal Code: {postal_code}\n━━━━━━━━━━━━━━",
-        reply_markup=reply_markup
-    )
-
-# ✅ /info
-async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    keyboard = [[InlineKeyboardButton("🆔 User ID", callback_data=f"uid:{user.id}")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await animated_reply(update, "🔍 Processing User Info...")
-    await update.message.reply_text(
-        f"🔍 Showing User's Profile Info 📋\n━━━━━━━━━━━━━━\n• Full Name: {user.full_name}\n• Username: @{user.username}\n• User ID: {user.id}\n• Chat ID: {user.id}\n• Premium User: {'Yes' if user.is_premium else 'No'}\n━━━━━━━━━━━━━━\n👁 Thank You for Using Our Tool ✅",
-        reply_markup=reply_markup
-    )
-
-# ✅ Callback handler
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    data = query.data
+# 🚀 Run bot
+bot.polling()
 
