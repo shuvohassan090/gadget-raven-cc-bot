@@ -150,5 +150,5 @@ def menu_command_handler(call):
 # Run bot
 if __name__ == "__main__":
     print("🤖 GADGET CC GENERATOR BOT is running...")
-    if __name__ == "__main__":
+if __name__ == "__main__":
     safe_polling()
