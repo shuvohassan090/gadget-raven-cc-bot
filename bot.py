@@ -1,4 +1,3 @@
-python
 import os
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -9,7 +8,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = os.getenv("ADMIN_ID")
+ADMIN_ID = os.getenv("ADMIN_ID")  # Placeholder for future admin features
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -46,22 +45,29 @@ def cc_markup(args):
 def gen_cc(message):
     bot.send_chat_action(message.chat.id, 'typing')
     time.sleep(1)  # Slight delay for typing effect
+
+    args_list = message.text.split()
+    if len(args_list) < 2:
+        bot.reply_to(message, "❌ Format: /gen BIN or /gen BIN|MM|YY")
+        return
+
     try:
-        args = message.text.split()[1]
+        args = args_list[1]
         parts = args.split('|')
         bin_code = parts[0]
         month = parts[1] if len(parts) > 1 else str(random.randint(1, 12)).zfill(2)
         year = parts[2] if len(parts) > 2 else str(random.randint(25, 30))
     except Exception as e:
-        bot.reply_to(message, "❌ Format: /gen BIN or /gen BIN|MM|YY")
+        print(f"Error in /gen command: {e}")
+        bot.reply_to(message, "❌ Format error. Use /gen BIN or /gen BIN|MM|YY")
         return
-    
+
     cc_list = generate_cc_list(bin_code, month, year)
     reply = "⚙️ Generating Credit Cards...\n━━━━━━━━━━━━━━━━\n" + "\n".join(cc_list)
     markup = cc_markup(args)
     bot.send_message(message.chat.id, reply, reply_markup=markup)
 
-# Callback for re-generation (edit message)
+# Callback for re-generation
 @bot.callback_query_handler(func=lambda call: call.data.startswith('regen:'))
 def re_generate(call):
     args = call.data.split(':')[1]
@@ -81,9 +87,10 @@ def re_generate(call):
         )
         bot.answer_callback_query(call.id, "Re-generated!")
     except Exception as e:
-        bot.answer_callback_query(call.id, "Error occurred while re-generating.")
+        print(f"Error in callback: {e}")
+        bot.answer_callback_query(call.id, "❌ Error occurred while re-generating.")
 
-# /fake command (Country-based fake info)
+# /fake command
 country_info = {
     "usa": ("123 Raven Lane", "New York", "USA"),
     "us": ("123 Raven Lane", "New York", "USA"),
@@ -131,23 +138,25 @@ country_info = {
 @bot.message_handler(commands=['fake'])
 def fake_info(message):
     args = message.text.split()
-    country_key = args[1].lower() if len(args) > 1 else ""
+    if len(args) < 2:
+        bot.reply_to(message, "❌ Format: /fake country_name or code (e.g. /fake bd)")
+        return
+
+    country_key = args[1].lower()
     info = country_info.get(country_key)
     if info:
         address, city, country = info
-        message_text = f"Address: {address}\nCity: {city}\nCountry: {country}"
+        message_text = f"🏠 Address: {address}\n🏙️ City: {city}\n🌍 Country: {country}"
     else:
-        message_text = "Country info not found. Please check the country code."
+        message_text = "❌ Country info not found. Please check the country code."
     bot.reply_to(message, message_text)
 
-# Adding animated "typing" indicator (simulating animation)
+# Optional fallback handler
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
-    # Optional: You can add some default responses or ignore
-    pass
+    bot.reply_to(message, "❓ Unknown command. Try /start, /gen BIN, or /fake country")
 
 # Run bot
 if __name__ == "__main__":
-    print("Bot is running...")
+    print("✅ Bot is running...")
     bot.polling(none_stop=True)
-```
