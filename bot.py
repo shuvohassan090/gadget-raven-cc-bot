@@ -4,37 +4,66 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import random
 import time
 from dotenv import load_dotenv
+from requests.exceptions import ConnectionError, Timeout
+from urllib3.exceptions import ProtocolError
 
-# Load environment variables
+# Load environment
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = os.getenv("ADMIN_ID")  # Placeholder for future admin features
+ADMIN_ID = os.getenv("ADMIN_ID")  # Future use if needed
 
-bot = telebot.TeleBot(BOT_TOKEN)
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN মিসিং আছে। .env এ BOT_TOKEN সেট করো।")
 
-# Helper function to generate CCs
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
+
+# Safe animated reply with simple retry/backoff
+def animated_reply(chat_id, text, delay=1.2, max_attempts=2):
+    msg = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            msg = bot.send_message(chat_id, f"<b>{text}</b>")
+            break
+        except Exception as e:
+            print(f"[animated_reply send attempt {attempt}] failed: {e}")
+            time.sleep(0.3 * attempt)
+    if not msg:
+        return
+    time.sleep(delay)
+    for attempt in range(1, max_attempts + 1):
+        try:
+            bot.delete_message(chat_id, msg.message_id)
+            break
+        except Exception as e:
+            print(f"[animated_reply delete attempt {attempt}] failed: {e}")
+            time.sleep(0.3 * attempt)
+
+# Helper to generate CC list
 def generate_cc_list(bin_code, month, year, count=10):
     cc_list = []
     for _ in range(count):
-        cc = bin_code + ''.join([str(random.randint(0, 9)) for _ in range(16 - len(bin_code))])
+        cc = bin_code + ''.join(str(random.randint(0, 9)) for _ in range(16 - len(bin_code)))
         cvc = str(random.randint(100, 999))
-        cc_list.append(f"{cc}|{month}|{year}|{cvc}")
+        cc_list.append(f"<code>{cc}|{month}|{year}|{cvc}</code>")
     return cc_list
 
 # /start command
 @bot.message_handler(commands=['start'])
 def start(message):
-    name = message.from_user.first_name.upper()
-    welcome = f"""Hi {name}! Welcome to this bot
-━━━━━━━━━━━━━━━━━━━━━━
-GADGET CC GENERATOR BOT is your ultimate toolkit on Telegram, packed with CC generators, educational resources, downloaders, temp mail, crypto utilities, and more. Simplify your tasks with cardin ease!
-━━━━━━━━━━━━━━━━━━━━━━
-Don't forget to JoinNow for updates!"""
+    first_name = (message.from_user.first_name or "User").upper()
+    animated_reply(message.chat.id, "Loading Welcome Message...", 1)
+    welcome = (
+        f"Hi <b>{first_name}</b>! Welcome to this bot\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "GADGET CC GENERATOR BOT is your ultimate toolkit on Telegram, packed with CC generators, educational resources, downloaders, temp mail, crypto utilities, and more. Simplify your tasks with cardin ease!\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "Don't forget to JoinNow for updates!"
+    )
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("🆕 Update", url="https://t.me/shuvogadgetbox"))
     bot.send_message(message.chat.id, welcome, reply_markup=markup)
 
-# Function to create Re-generate button
+# Re-generate button helper
 def cc_markup(args):
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("🔁 Re-generate", callback_data=f"regen:{args}"))
@@ -44,21 +73,20 @@ def cc_markup(args):
 @bot.message_handler(commands=['gen'])
 def gen_cc(message):
     bot.send_chat_action(message.chat.id, 'typing')
-    time.sleep(1)  # Slight delay for typing effect
-
-    args_list = message.text.split()
-    if len(args_list) < 2:
+    time.sleep(0.5)
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
         bot.reply_to(message, "❌ Format: /gen BIN or /gen BIN|MM|YY")
         return
 
+    args = parts[1]
     try:
-        args = args_list[1]
-        parts = args.split('|')
-        bin_code = parts[0]
-        month = parts[1] if len(parts) > 1 else str(random.randint(1, 12)).zfill(2)
-        year = parts[2] if len(parts) > 2 else str(random.randint(25, 30))
+        sub = args.split('|')
+        bin_code = sub[0]
+        month = sub[1] if len(sub) > 1 and sub[1].isdigit() else str(random.randint(1, 12)).zfill(2)
+        year = sub[2] if len(sub) > 2 and sub[2].isdigit() else str(random.randint(25, 30))
     except Exception as e:
-        print(f"Error in /gen command: {e}")
+        print(f"Error parsing /gen args: {e}")
         bot.reply_to(message, "❌ Format error. Use /gen BIN or /gen BIN|MM|YY")
         return
 
@@ -67,15 +95,15 @@ def gen_cc(message):
     markup = cc_markup(args)
     bot.send_message(message.chat.id, reply, reply_markup=markup)
 
-# Callback for re-generation
+# Re-generate callback
 @bot.callback_query_handler(func=lambda call: call.data.startswith('regen:'))
 def re_generate(call):
-    args = call.data.split(':')[1]
+    args = call.data.split(':', 1)[1]
     try:
-        parts = args.split('|')
-        bin_code = parts[0]
-        month = parts[1] if len(parts) > 1 else str(random.randint(1, 12)).zfill(2)
-        year = parts[2] if len(parts) > 2 else str(random.randint(25, 30))
+        sub = args.split('|')
+        bin_code = sub[0]
+        month = sub[1] if len(sub) > 1 and sub[1].isdigit() else str(random.randint(1, 12)).zfill(2)
+        year = sub[2] if len(sub) > 2 and sub[2].isdigit() else str(random.randint(25, 30))
         cc_list = generate_cc_list(bin_code, month, year)
         reply = "⚙️ Re-generating Credit Cards...\n━━━━━━━━━━━━━━━━\n" + "\n".join(cc_list)
         markup = cc_markup(args)
@@ -87,10 +115,10 @@ def re_generate(call):
         )
         bot.answer_callback_query(call.id, "Re-generated!")
     except Exception as e:
-        print(f"Error in callback: {e}")
+        print(f"Error in regen callback: {e}")
         bot.answer_callback_query(call.id, "❌ Error occurred while re-generating.")
 
-# /fake command
+# Full country info mapping
 country_info = {
     "usa": ("123 Raven Lane", "New York", "USA"),
     "us": ("123 Raven Lane", "New York", "USA"),
@@ -135,6 +163,7 @@ country_info = {
     "ng": ("33 Lagos Ave", "Lagos", "Nigeria")
 }
 
+# /fake command
 @bot.message_handler(commands=['fake'])
 def fake_info(message):
     args = message.text.split()
@@ -151,12 +180,27 @@ def fake_info(message):
         message_text = "❌ Country info not found. Please check the country code."
     bot.reply_to(message, message_text)
 
-# Optional fallback handler
+# Fallback handler
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     bot.reply_to(message, "❓ Unknown command. Try /start, /gen BIN, or /fake country")
 
-# Run bot
+# Resilient polling loop
+def safe_polling():
+    backoff = 1
+    while True:
+        try:
+            print("✅ Bot is running...")
+            bot.polling(non_stop=True, timeout=100, long_polling_timeout=90)
+            backoff = 1
+        except (ConnectionError, ProtocolError, Timeout) as e:
+            print(f"[WARN] কানেকশন এরর: {e}. {backoff}s পরে রি-ট্রাই করছি...")
+            time.sleep(backoff)
+            backoff = min(backoff * 2, 30)
+        except Exception as e:
+            print(f"[ERROR] অজানা এরর: {e}. ১০ সেকেন্ড পরে রি-ট্রাই করছি...")
+            time.sleep(10)
+            backoff = 1
+
 if __name__ == "__main__":
-    print("✅ Bot is running...")
     safe_polling()
