@@ -1,11 +1,15 @@
 import logging
-telebot.logger.setLevel(logging.DEBUG)
 import os
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import random
 import time
 from dotenv import load_dotenv
+from requests.exceptions import ConnectionError, Timeout
+from urllib3.exceptions import ProtocolError
+
+# debug log চালু করতে
+telebot.logger.setLevel(logging.DEBUG)
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
