@@ -159,4 +159,4 @@ def handle_message(message):
 # Run bot
 if __name__ == "__main__":
     print("✅ Bot is running...")
-    bot.polling(none_stop=True)
+    safe_polling()
