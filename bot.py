@@ -1,3 +1,5 @@
+import logging
+telebot.logger.setLevel(logging.DEBUG)
 import os
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -148,4 +150,5 @@ def menu_command_handler(call):
 # Run bot
 if __name__ == "__main__":
     print("🤖 GADGET CC GENERATOR BOT is running...")
-    bot.polling(none_stop=True)
+    if __name__ == "__main__":
+    safe_polling()
