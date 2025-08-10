@@ -23,7 +23,7 @@ def generate_cc_list(bin_code, month, year, count=10):
         cc_list.append(f"<code>{cc}|{month}|{year}|{cvc}</code>")
     return cc_list
 
-# Country data for fake addresses (Full countries with country codes and addresses)
+# Country data for fake addresses (Complete list of countries)
 country_info = {
     "bd": [("৭৮ নারায়ণগঞ্জ সদর", "নারায়ণগঞ্জ", "Bangladesh"), ("22 Shapla Road", "Dhaka", "Bangladesh")],
     "us": [("123 Main St", "New York", "USA"), ("456 Oak Ave", "Los Angeles", "USA")],
@@ -47,7 +47,7 @@ country_info = {
     "za": [("66 Cape Town St", "Cape Town", "South Africa"), ("5 Durban Blvd", "Durban", "South Africa")],
     "ng": [("33 Lagos Ave", "Lagos", "Nigeria"), ("23 Abuja Road", "Abuja", "Nigeria")],
     "kz": [("14 Almaty Avenue", "Almaty", "Kazakhstan"), ("5 Astana St", "Astana", "Kazakhstan")],
-    # Add more countries and addresses as required (complete the full list)
+    # Add more countries and addresses as required
 }
 
 # /start command
@@ -55,12 +55,12 @@ country_info = {
 def start(message):
     first_name = (message.from_user.first_name or "User").upper()
     welcome = f"""
-    Hi <b>{first_name}</b>! Welcome to this bot
-    ━━━━━━━━━━━━━━━━━━━━━━
-    GADGET CC GENERATOR BOT is your ultimate toolkit on Telegram, packed with CC generators, educational resources, downloaders, temp mail, crypto utilities, and more. Simplify your tasks with cardin ease!
-    ━━━━━━━━━━━━━━━━━━━━━━
-    Don't forget to JoinNow for updates!
-    """
+Hi <b>{first_name}</b>! Welcome to this bot
+━━━━━━━━━━━━━━━━━━━━━━
+GADGET CC GENERATOR BOT is your ultimate toolkit on Telegram, packed with CC generators, educational resources, downloaders, temp mail, crypto utilities, and more. Simplify your tasks with cardin ease!
+━━━━━━━━━━━━━━━━━━━━━━
+Don't forget to JoinNow for updates!
+"""
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("🆕 Update", url="https://t.me/shuvogadgetbox"))
     markup.add(InlineKeyboardButton("Developer Name", url="https://t.me/shuvohassan00"))
@@ -81,8 +81,7 @@ def gen_cc(message):
         bin_code = sub[0]
         month = sub[1] if len(sub) > 1 and sub[1].isdigit() else str(random.randint(1, 12)).zfill(2)
         year = sub[2] if len(sub) > 2 and sub[2].isdigit() else str(random.randint(25, 30))
-    except Exception as e:
-        print(f"Error parsing /gen args: {e}")
+    except Exception:
         bot.reply_to(message, "❌ Format error. Use /gen BIN or /gen BIN|MM|YY")
         return
     if len(bin_code) < 6 or len(bin_code) > 15:
@@ -113,14 +112,14 @@ def fake_info(message):
     if address_info:
         address, city, country = address_info
         message_text = f"""
-        Generating Fake Address...
-        ━━━━━━━━━━━━━━━━━
-        Address for {country} 🇧🇩
-        ━━━━━━━━━━━━━━━━━
-        Street : {address}
-        City/Town/Village : {city}
-        Country : {country}
-        """
+Generating Fake Address...
+━━━━━━━━━━━━━━━━━━━━━━
+Address for {country}
+━━━━━━━━━━━━━━━━━━━━━━
+Street : {address}
+City/Town/Village : {city}
+Country : {country}
+"""
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("Copy Postal Code", callback_data=f"copy:{country_key}"))
         bot.send_message(message.chat.id, message_text, reply_markup=markup)
@@ -137,14 +136,14 @@ def user_info(message):
     created_on = "January 1, 2023"  # Example, should be dynamic
     account_age = "2 years"  # Example, should be dynamic
     user_profile = f"""
-    🔍 Showing User's Profile Info 📋
-    ━━━━━━━━━━━━━━━━━
-    Full Name: {first_name} {last_name}
-    Username: @{username}
-    User ID: {user_id}
-    Account Age: {account_age}
-    Created On: {created_on}
-    """
+🔍 Showing User's Profile Info 📋
+━━━━━━━━━━━━━━━━━━━━━━
+Full Name: {first_name} {last_name}
+Username: @{username}
+User ID: {user_id}
+Account Age: {account_age}
+Created On: {created_on}
+"""
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton(f"Copy User ID {user_id}", callback_data=f"copy_user_id:{user_id}"))
     bot.send_message(message.chat.id, user_profile, reply_markup=markup)
@@ -158,7 +157,7 @@ def stats(message):
         bot.reply_to(message, "❌ Unauthorized Access!")
 
 # Handle inline button actions for copying info
-@bot.callback_query_handler(func=lambda call: call.data.startswith('copy:'))
+@bot.callback_query_handler(func=lambda call: call.data.startswith('copy:') or call.data.startswith('copy_user_id:'))
 def copy_data(call):
     if call.data.startswith('copy:'):
         country_key = call.data.split(':')[1]
@@ -178,6 +177,7 @@ def safe_polling():
     while True:
         try:
             print("✅ Bot is running...")
+            bot.remove_webhook()  # Remove previous webhook if any
             bot.polling(non_stop=True, timeout=100, long_polling_timeout=90)
             backoff = 1
         except Exception as e:
